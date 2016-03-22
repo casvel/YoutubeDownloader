@@ -37,7 +37,11 @@ module Output		# prityfied outputs
 	end
 
 	def print_warning(message, *argument)
-        puts yellow("Warning: ")+message
+		if argument == []
+        	puts yellow("Warning: ")+message
+        else
+        	puts yellow("Warning: ")+message+" <#{argument}>"
+        end
     end
 
     def echo(argument)    #  this behaves exactly like puts, unless quiet is on. Use for all output messages.
