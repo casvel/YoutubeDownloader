@@ -29,10 +29,14 @@ The options `-m, --mode=<s>` and `-q, --query=<s>` are required.
 * `ruby youtubedownloader.rb -m video -q 6Whgn_iE5uc,BB0DU4DoPP4`
 * `ruby youtubedownloader.rb -m search -q "borro cassette" -a 1`
 
+## Bugs
+* Sometimes the file does not download correctly. Retry the download can fix this.
+
 ## TO DO
 * Download videos.
 * Download mixes (if possible).
 * Think what else to add.
+* Fix de bugs.
 
 ## License
 
