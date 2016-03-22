@@ -36,7 +36,7 @@ The options `-m, --mode=<s>` and `-q, --query=<s>` are required.
 * Download videos.
 * Download mixes (if possible).
 * Think what else to add.
-* Fix de bugs.
+* Fix the bugs.
 
 ## License
 
