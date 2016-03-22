@@ -32,6 +32,7 @@ The options `-m, --mode=<s>` and `-q, --query=<s>` are required.
 ## TO DO
 * Download videos.
 * Download mixes (if possible).
+* Think what else to add.
 
 ## License
 
