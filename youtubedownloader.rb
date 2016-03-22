@@ -36,7 +36,7 @@ module Output		# prityfied outputs
 		end
 	end
 
-	def print_warning(message)
+	def print_warning(message, *argument)
         puts yellow("Warning: ")+message
     end
 
