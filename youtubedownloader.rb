@@ -8,6 +8,7 @@ require 'fileutils'
 require 'parallel'
 require 'trollop'
 
+
 module Colors      # this allows using colors with ANSI escape codes
     
     def colorize(text, color_code)
@@ -107,60 +108,73 @@ class API
 		end
 	end
 
-	def search_playListItems_by_id(id, max_results)
-		begin
-			search_response = @client.execute!(
-		    	:api_method => @youtube.playlist_items.list,
-		    	:parameters => {
-		        	:part => "snippet",
-		        	:playlistId => id,
-		        	:maxResults => max_results
-		      	}
-		    )
-		rescue Exception => error
-	    	print_error(STR_FAIL_REQ, error)
-	    	exit 1
-	    end
+	def request(method, params)
 
-	    return search_response.data.items
+		items = []
+		total = nil
+		max_results = params[:maxResults]
+
+		while (total.nil? || total > 0) && max_results > 0
+			begin
+				
+				params[:maxResults] = max_results > 50 ? 50 : max_results
+				search_response = @client.execute!(
+			    	:api_method => method,
+			    	:parameters => params
+			    )
+
+				search_response.data.items.each { |item| items << item}
+
+				total ||= search_response.data.pageInfo.totalResults
+			    max_results -= search_response.data.pageInfo.resultsPerPage
+			    total -= search_response.data.pageInfo.resultsPerPage
+
+			    unless search_response.data.next_page_token.nil?
+			    	params[:pageToken] = search_response.data.next_page_token
+			    end 
+
+			rescue Exception => error
+		    	print_error(STR_FAIL_REQ, error)
+		    	exit 1
+		    end
+		end
+
+		#puts "#{items}"
+	    return items
+	end
+
+	def search_playListItems_by_id(id, max_results)
+
+	    params = {
+	    	:part => "snippet",
+		    :playlistId => id,
+		    :maxResults => max_results
+		}
+	    response = request(@youtube.playlist_items.list, params)
+	    return response
 	end
 
 	def search_video_by_id(id, max_results)
-		begin
-			search_response = @client.execute!(
-		    	:api_method => @youtube.videos.list,
-		    	:parameters => {
-		        	:part => "snippet",
-		        	:id => id,
-		        	:maxResults => max_results
-		      	}
-		    )
-		rescue Exception => error
-	    	print_error(STR_FAIL_REQ, error)
-	    	exit 1
-	    end
 
-	    return search_response.data.items
+	    params = {
+	    	:part => "snippet",
+        	:id => id,
+        	:maxResults => max_results
+	    }
+	    response = request(@youtube.videos.list, params)
+	    return response
 	end
 
 	def search_query(q, max_results)
-		begin
-			search_response = @client.execute!(
-		    	:api_method => @youtube.search.list,
-		    	:parameters => {
-		        	:part => "snippet",
-		        	:q => q,
-		        	:type => "video",
-		        	:maxResults => max_results
-		      	}
-		    )
-		rescue Exception => error
-	    	print_error(STR_FAIL_REQ, error)
-	    	exit 1
-	    end
 
-	    #puts "#{search_response.data.items}"
-	    return search_response.data.items
+	    params = {
+	    	:part => "snippet",
+        	:q => q,
+        	:type => "video",
+        	:maxResults => max_results
+	    }
+	    response = request(@youtube.search.list, params)
+	    return response
 	end
 end
 
@@ -179,7 +193,7 @@ class App
 	    	opt :out, "Where the downloads will store", :type => String, :default => "~/Music"
 	    	opt :key, "Path to the file with the API key", :type => String, :default => "~/.config/youtubedownloader/apikey"
 	    	opt :quiet, "To silence the output"
-	    	opt :max_results, "Max items to download [1, 50]", :type => :int, :default => 25
+	    	opt :max_results, "Max items to download >= 1", :type => :int, :default => 25
 		end
 
 		check_options
@@ -201,7 +215,7 @@ class App
     		exit 1
     	end
 
-    	if @opts[:max_results] < 1 || @opts[:max_results] > 50
+    	if @opts[:max_results] < 1
     		print_error(STR_WRONG_NUM_RESULTS)
     		exit 1
     	end 

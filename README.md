@@ -1,5 +1,5 @@
 # YoutubeDownloader
-A ruby script for download mp3 from Youtube. It uses the API for [Youtube](https://developers.google.com/youtube/v3/) and the API for [YoutubeInMP3](http://www.youtubeinmp3.com/api/)
+A ruby script for download mp3 from Youtube. It uses the API for [Youtube](https://developers.google.com/youtube/v3/) and the API for [YoutubeInMP3](http://www.youtubeinmp3.com/api/).
 
 ## Quick start
 In order to use this script you will need to have an API key enabled for Youtube. If you don't have one, you can get it in `https://console.cloud.google.com`. Remember to enable the YouTube Data API v3.
@@ -16,7 +16,7 @@ Once you get your API key you need to save it inside the file `~/.config/youtube
       -k, --key=<s>            Path to the file with the API key (default:
                                ~/.config/youtubedownloader/apikey)
       -u, --quiet              To silence the output
-      -a, --max-results=<i>    Max items to download [1, 50] (default: 25)
+      -a, --max-results=<i>    Max items to download >= 1 (default: 25)
       -h, --help               Show this message
 ```
 The options `-m, --mode=<s>` and `-q, --query=<s>` are required. 
