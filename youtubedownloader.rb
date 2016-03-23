@@ -51,25 +51,29 @@ module Output		# prityfied outputs
     def info(argument)
         echo blue("Info: ")+argument
     end
+
+    def info2(argument)
+        echo cyan("Info: ")+argument
+    end
 end
 
 module Messages		
 	STR_NO_FILE       = "The api key file doesn't exist."
 	STR_FAIL_CONN     = "There was an error connecting with the API."
 	STR_FAIL_REQ      = "There was an error making the API request."
-	STR_FAIL_DOWNLOAD = "Failed to download. This is usually a problem from www.youtubeinmp3.com"
+	STR_FAIL_DOWNLOAD = "Failed to download."
 	STR_NIL_MODE      = "Flag --mode is required. See --help for help"
 	STR_WRONG_MODE    = "That mode isn't supported. See --help for help."
 	STR_NIL_QRY       = "You need to tell me what to download. See --help for help."
 	STR_WRONG_NUM_RESULTS = "Can't download that number of results. See --help for help."
 	STR_EMPTY 		  = "Couldn't find any items."
-	STR_REDIRECT	  = "You can try going to: "
+	STR_REQUEST_ERROR = "Request error. Retrying..."
 end
 
 module Everything    
-    include Colors
-    include Output
-    include Messages
+  include Colors
+  include Output
+  include Messages
 end
 
 
@@ -206,15 +210,23 @@ class App
     end
 
     def youtube_in_mp3(title, video_id)
+    	
     	info("Downloading <#{title}> with id <#{video_id}>")
 
     	mp3 = open("http://www.youtubeinmp3.com/fetch/?video=http://www.youtube.com/watch?v=#{video_id}")
-		if mp3.is_a? Tempfile
-			FileUtils.mv(mp3.path, File.expand_path("#{@opts[:out]}/#{title}.mp3"))
-		else
-			print_error(STR_FAIL_DOWNLOAD, title, video_id) 
-			print_warning(STR_REDIRECT, "http://www.youtubeinmp3.com/fetch/?video=http://www.youtube.com/watch?v=#{video_id}")
+    	retries = 3
+
+		while (!(mp3.is_a? Tempfile) || mp3.size < 20_000) && retries > 0
+			info2(STR_REQUEST_ERROR+" "+title)
+			mp3 = open("http://www.youtubeinmp3.com/fetch/?video=http://www.youtube.com/watch?v=#{video_id}")
+			retries -= 1
 		end
+
+		if !(mp3.is_a? Tempfile) || mp3.size < 20_000
+			print_error(STR_FAIL_DOWNLOAD, title, video_id)
+		else
+			FileUtils.mv(mp3.path, File.expand_path("#{@opts[:out]}/#{title}.mp3"))
+		end 
     end
 
 	def run
