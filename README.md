@@ -50,4 +50,4 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ### Acknowledgment
 
-Thanks to [Freddy Román](https://github.com/frcepeda/) because, although without his knowledge, gave me ideas about how to make this project.
+Thanks to [Freddy Román](https://github.com/frcepeda/) because, although without his knowledge, gave me ideas about how to make this project. Also thanks to [Diana González](https://github.com/dgonzalez-ri) for helping me testing and for telling me how to improve the project.
