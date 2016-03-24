@@ -308,7 +308,7 @@ class App
 				id    = video.id.videoId
 
 				result = youtube_in_mp3(title, id)	
-				{title:title, id:id} if result != "Success"
+				{title:title, id:id} if result != "Success" 
 			end
 		end
 
