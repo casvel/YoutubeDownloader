@@ -78,6 +78,7 @@ module Messages
 	STR_FAILED_SONGS  = "Error while downloading: "
 	STR_RETRY_DOWNLOAD = "Retry download? (y/n)"
 	STR_YOU_CAN_DO_IT = "Please type \"y\" or \"n\"."
+	STR_FAIL_MOVE     = "There was an error moving the file. "
 end
 
 module Everything    
@@ -250,8 +251,13 @@ class App
 			print_error(STR_FAIL_DOWNLOAD, title, id)
 			return STR_FAIL_DOWNLOAD
 		else
-			FileUtils.mv(mp3.path, File.expand_path("#{@opts[:out]}/#{title}.mp3"))
-			return "Succes"
+			begin
+				FileUtils.mv(mp3.path, File.expand_path("#{@opts[:out]}/#{title}.mp3"))
+			rescue Exception => error
+				print_error(STR_FAIL_MOVE, error)
+				return STR_FAIL_MOVE
+			end
+			return "Success"
 		end 
     end
 
@@ -259,7 +265,7 @@ class App
 		api = API.new(@opts[:key])
 		api.connect
 
-		fails = Array.new
+		fails = Array.new # to retry download
 
 		case @opts[:mode].to_sym
 		when :list
@@ -274,7 +280,7 @@ class App
 				id    = video.snippet.resourceId.videoId
 
 				result = youtube_in_mp3(title, id)	
-				{title:title, id:id} if result == STR_FAIL_DOWNLOAD
+				{title:title, id:id} if result != "Success"
 			end
 		when :video # Multiple ids should be comma separeted
 			videos = api.search_video_by_id(@opts[:query], @opts[:max_results])
@@ -288,7 +294,7 @@ class App
 				id    = video.id
 
 				result = youtube_in_mp3(title, id)	
-				{title:title, id:id} if result == STR_FAIL_DOWNLOAD
+				{title:title, id:id} if result != "Success"
 			end
 		when :search
 			videos = api.search_query(@opts[:query], @opts[:max_results])
@@ -302,12 +308,14 @@ class App
 				id    = video.id.videoId
 
 				result = youtube_in_mp3(title, id)	
-				{title:title, id:id} if result == STR_FAIL_DOWNLOAD
+				{title:title, id:id} if result != "Success"
 			end
 		end
 
+=begin
+Don't give up retry
+=end
 		fails.compact!
-
 		while true 
 
 			break if fails.length == 0
