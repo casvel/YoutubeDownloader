@@ -47,7 +47,7 @@ module Output		# prityfied outputs
 
     def print_songs(songs)
     	songs.each do |song|
-    		puts green(song[:title])+" with id "+green(song[:id]) unless song.nil?
+    		puts green(song[:title])+" with id "+green(song[:id])
     	end
     end
 
@@ -259,82 +259,91 @@ class App
 		api = API.new(@opts[:key])
 		api.connect
 
-		while true
+		fails = Array.new
 
-			fails = Array.new
+		case @opts[:mode].to_sym
+		when :list
+			videos = api.search_playListItems_by_id(@opts[:query], @opts[:max_results])
 
-			case @opts[:mode].to_sym
-			when :list
-				videos = api.search_playListItems_by_id(@opts[:query], @opts[:max_results])
-
-				if videos.length == 0
-					info(STR_EMPTY)
-				end
-
-				fails += Parallel.map(videos) do |video|
-					title = video.snippet.title
-					id    = video.snippet.resourceId.videoId
-
-					result = youtube_in_mp3(title, id)	
-					{title:title, id:id} if result == STR_FAIL_DOWNLOAD
-				end
-			when :video # Multiple ids should be comma separeted
-				videos = api.search_video_by_id(@opts[:query], @opts[:max_results])
-
-				if videos.length == 0
-					info(STR_EMPTY)
-				end
-
-				fails += Parallel.map(videos) do |video|
-					title = video.snippet.title
-					id    = video.id
-
-					result = youtube_in_mp3(title, id)	
-					{title:title, id:id} if result == STR_FAIL_DOWNLOAD
-				end
-			when :search
-				videos = api.search_query(@opts[:query], @opts[:max_results])
-
-				if videos.length == 0
-					info(STR_EMPTY)
-				end
-
-				fails += Parallel.map(videos) do |video|
-					title = video.snippet.title
-					id    = video.id.videoId
-
-					result = youtube_in_mp3(title, id)	
-					{title:title, id:id} if result == STR_FAIL_DOWNLOAD
-				end
+			if videos.length == 0
+				info(STR_EMPTY)
 			end
 
-			count_fails = 0
-			fails.each { |v| count_fails += 1 unless v.nil? }
+			fails += Parallel.map(videos) do |video|
+				title = video.snippet.title
+				id    = video.snippet.resourceId.videoId
 
-			if count_fails > 0
-				puts ""
-				print_error(STR_FAILED_SONGS)
-				print_songs(fails)
+				result = youtube_in_mp3(title, id)	
+				{title:title, id:id} if result == STR_FAIL_DOWNLOAD
+			end
+		when :video # Multiple ids should be comma separeted
+			videos = api.search_video_by_id(@opts[:query], @opts[:max_results])
+
+			if videos.length == 0
+				info(STR_EMPTY)
+			end
+
+			fails += Parallel.map(videos) do |video|
+				title = video.snippet.title
+				id    = video.id
+
+				result = youtube_in_mp3(title, id)	
+				{title:title, id:id} if result == STR_FAIL_DOWNLOAD
+			end
+		when :search
+			videos = api.search_query(@opts[:query], @opts[:max_results])
+
+			if videos.length == 0
+				info(STR_EMPTY)
+			end
+
+			fails += Parallel.map(videos) do |video|
+				title = video.snippet.title
+				id    = video.id.videoId
+
+				result = youtube_in_mp3(title, id)	
+				{title:title, id:id} if result == STR_FAIL_DOWNLOAD
+			end
+		end
+
+		fails.compact!
+
+		while true 
+
+			break if fails.length == 0
+
+			puts ""
+			print_error(STR_FAILED_SONGS)
+			print_songs(fails)
+			print STR_RETRY_DOWNLOAD+" "
+
+			continue = gets.chomp.downcase
+			while continue != "y" && continue != "n"
+				print_error(STR_YOU_CAN_DO_IT)
 				print STR_RETRY_DOWNLOAD+" "
-
 				continue = gets.chomp.downcase
-				while continue != "y" && continue != "n"
-					print_error(STR_YOU_CAN_DO_IT)
-					print STR_RETRY_DOWNLOAD+" "
-					continue = gets.chomp.downcase
+			end
+
+			if continue == "y"
+				videos = fails
+				fails = Array.new
+
+				fails += Parallel.map(videos) do |video|
+
+					next if video.nil?
+
+					title = video[:title]
+					id    = video[:id]
+
+					result = youtube_in_mp3(title, id)	
+					{title:title, id:id} if result == STR_FAIL_DOWNLOAD
 				end
 
-				if continue == "y"
-					query = ""
-					fails.each{ |video| query += video[:id]+"," unless video.nil? } 
-					@opts[:mode]  = :video
-					@opts[:query] = query
-				else
-					break
-				end
+				fails.compact!
 			else
 				break
 			end
+
 		end
 	end
 end
