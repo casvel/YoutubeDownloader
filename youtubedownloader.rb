@@ -13,7 +13,7 @@ module Colors      # this allows using colors with ANSI escape codes
     
     def colorize(text, color_code)
         if STDOUT.tty?
-            return "\e[#{color_code}m#{text}\e[0m"
+            return "\e[1m\e[#{color_code}m#{text}\e[0m"
         else
             return text
         end
@@ -308,7 +308,7 @@ class App
 				id    = video.id.videoId
 
 				result = youtube_in_mp3(title, id)	
-				{title:title, id:id} if result != "Success" 
+				{title:title, id:id} if result != "Success"
 			end
 		end
 
@@ -344,7 +344,7 @@ Don't give up retry
 					id    = video[:id]
 
 					result = youtube_in_mp3(title, id)	
-					{title:title, id:id} if result == STR_FAIL_DOWNLOAD
+					{title:title, id:id} if result != "Success"
 				end
 
 				fails.compact!

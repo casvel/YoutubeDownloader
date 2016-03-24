@@ -2,7 +2,7 @@
 A ruby script for download mp3 from Youtube. It uses the API for [Youtube](https://developers.google.com/youtube/v3/) and the API for [YoutubeInMP3](http://www.youtubeinmp3.com/api/).
 
 ## Quick start
-In order to use this script you will need to have an API key enabled for Youtube. If you don't have one, you can get it in `https://console.cloud.google.com`. Remember to enable the YouTube Data API v3.
+In order to use this script you will need to have an API key enabled for Youtube. If you don't have one, you can get one  [here](https://console.cloud.google.com). Remember to enable the YouTube Data API v3.
 
 Once you get your API key you need to save it inside the file `~/.config/youtubedownloader/apikey`, or use the option `-k, --key=<path>` to give to the script the path where the key is stored.
 
