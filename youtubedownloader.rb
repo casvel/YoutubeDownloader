@@ -65,19 +65,27 @@ module Output		# prityfied outputs
 end
 
 module Messages		
+	
 	STR_NO_FILE       = "The api key file doesn't exist."
 	STR_FAIL_CONN     = "There was an error connecting with the API."
 	STR_FAIL_REQ      = "There was an error making the API request."
-	STR_FAIL_DOWNLOAD = "Failed to download."
+	
+	
 	STR_NIL_MODE      = "Flag --mode is required. See --help for help"
 	STR_WRONG_MODE    = "That mode isn't supported. See --help for help."
 	STR_NIL_QRY       = "Flag --query is required. See --help for help."
-	STR_WRONG_NUM     = "Input a number inside the correct range. See --help for help."
+	STR_WRONG_NUM     = "One number in the options isn't inside the right range. See --help for help."
+	STR_INDEX_ERROR   = "Index flag must be used only in :list mode and without --skip"
+
+	
 	STR_EMPTY 		  = "Couldn't find any items."
+	STR_FAIL_DOWNLOAD = "Failed to download."
 	STR_REQUEST_ERROR = "Request error. Retrying: "
 	STR_FAILED_SONGS  = "Error while downloading: "
 	STR_RETRY_DOWNLOAD = "Retry download? (y/n)"
 	STR_YOU_CAN_DO_IT = "Please type \"y\" or \"n\"."
+
+
 	STR_FAIL_MOVE     = "There was an error moving the file. "
 	STR_FAIL_CREATE   = "Can't create output directory. "
 end
@@ -96,9 +104,10 @@ Class to make API requests
 class API 		
 	include Everything
 
-	def initialize(file)
-		if File.exist? File.expand_path(file)
-			@key = File.read(File.expand_path(file))
+	def initialize(opts)
+		@opts = opts
+		if File.exist? File.expand_path(@opts[:key])
+			@key = File.read(File.expand_path(@opts[:key]))
 		else
 			print_error(STR_NO_FILE, file)
 			exit 1
@@ -119,11 +128,16 @@ class API
 		end
 	end
 
-	def request(method, params, skip)
+	def request(method, params)
 
 		items = []
 		total = nil
-		max_results = params[:maxResults]
+
+		max_results = @opts[:max_results]
+		skip  = @opts[:skip]
+		index = @opts[:index]
+		i = 1
+		j = 0
 
 		while (total.nil? || total > 0) && max_results > 0
 			begin
@@ -138,13 +152,18 @@ class API
 				total ||= search_response.data.pageInfo.totalResults
 
 				search_response.data.items.each do |item| 
-					if skip == 0
+
+					if skip == 0 && (index.nil? || j < index.length && index[j] == i)
+
 						items << item
 						max_results -= 1
+						j += 1
 					else
-						skip -= 1
-						total -= 1
+						skip -= 1 if skip > 0
 					end
+
+					total -= 1
+					i += 1
 				end
 
 			    unless search_response.data.next_page_token.nil?
@@ -161,37 +180,36 @@ class API
 	    return items
 	end
 
-	def search_playListItems_by_id(id, max_results, skip)
+	def search_playListItems_by_id()
 
 	    params = {
 	    	:part => "snippet",
-		    :playlistId => id,
-		    :maxResults => max_results
+		    :playlistId => @opts[:query],
+		    :maxResults => @opts[:max_results]
 		}
-	    response = request(@youtube.playlist_items.list, params, skip)
-	    return response
+	    response = request(@youtube.playlist_items.list, params)
 	end
 
-	def search_video_by_id(id, max_results, skip)
+	def search_video_by_id()
 
 	    params = {
 	    	:part => "snippet",
-        	:id => id,
-        	:maxResults => max_results
+        	:id => @opts[:query],
+        	:maxResults => @opts[:max_results]
 	    }
-	    response = request(@youtube.videos.list, params, skip)
+	    response = request(@youtube.videos.list, params)
 	    return response
 	end
 
-	def search_query(q, max_results, skip)
+	def search_query()
 
 	    params = {
 	    	:part => "snippet",
-        	:q => q,
-        	:type => "video",
-        	:maxResults => max_results
+        	:q => @opts[:query],
+        	:maxResults => @opts[:max_results],
+        	:type => "video"
 	    }
-	    response = request(@youtube.search.list, params, skip)
+	    response = request(@youtube.search.list, params)
 	    return response
 	end
 end
@@ -214,6 +232,7 @@ class App
 	    	opt :quiet, "To silence the output."
 	    	opt :max_results, "Max items to download. >= 1", :type => :int, :default => 25
 	    	opt :skip, "Skip the first <i> items of the query. >= 0", :type => :int, :default => 0
+	    	opt :index, "Index(es) to download from a list (1-indexed). If multiple, separate with space.", :type => :ints, :default => nil
 		end
 
 		check_options
@@ -244,6 +263,20 @@ class App
     		print_error(STR_WRONG_NUM)
     		exit 1
     	end 
+
+    	if !(@opts[:index].nil?) && (@opts[:mode].to_sym != :list || @opts[:skip] != 0)
+    		print_error(STR_INDEX_ERROR)
+    		exit 1
+    	end
+
+    	if !(@opts[:index].nil?)
+    		
+    		@opts[:index].sort!
+    		if @opts[:index][0] < 1
+    			print_error(STR_WRONG_NUM)
+    			exit 1
+    		end
+    	end
 
     	begin
     		Dir.mkdir(File.expand_path(@opts[:out])) unless File.exists?(File.expand_path(@opts[:out]))
@@ -281,14 +314,15 @@ class App
     end
 
 	def run
-		api = API.new(@opts[:key])
+
+		api = API.new(@opts)
 		api.connect
 
 		fails = Array.new # to retry download
 
 		case @opts[:mode].to_sym
 		when :list
-			videos = api.search_playListItems_by_id(@opts[:query], @opts[:max_results], @opts[:skip])
+			videos = api.search_playListItems_by_id()
 
 			if videos.length == 0
 				info(STR_EMPTY)
@@ -302,7 +336,7 @@ class App
 				{title:title, id:id} if result != "Success"
 			end
 		when :video # Multiple ids should be comma separeted
-			videos = api.search_video_by_id(@opts[:query], @opts[:max_results], @opts[:skip])
+			videos = api.search_video_by_id()
 
 			if videos.length == 0
 				info(STR_EMPTY)
@@ -316,7 +350,7 @@ class App
 				{title:title, id:id} if result != "Success"
 			end
 		when :search
-			videos = api.search_query(@opts[:query], @opts[:max_results], @opts[:skip])
+			videos = api.search_query()
 
 			if videos.length == 0
 				info(STR_EMPTY)

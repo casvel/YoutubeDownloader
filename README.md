@@ -16,6 +16,7 @@ Once you get your API key you need to save it inside the file `~/.config/youtube
       -u, --quiet              To silence the output.
       -a, --max-results=<i>    Max items to download. >= 1 (default: 25)
       -s, --skip=<i>           Skip the first <i> items of the query. >= 0 (default: 0)
+      -i, --index=<i+>         Index(es) to download from a list (1-indexed). If multiple, separate with space.
       -h, --help               Show this message
 ```
 The options `-m, --mode=<s>` and `-q, --query=<s>` are required. 
@@ -27,6 +28,7 @@ The options `-m, --mode=<s>` and `-q, --query=<s>` are required.
 * `ruby youtubedownloader.rb -m list -q PLU_mcNMHvxilbbOnWFy4v4_nxxkMQ5r7l -o ~/Music/PTX`
 * `ruby youtubedownloader.rb -m video -q 6Whgn_iE5uc,BB0DU4DoPP4`
 * `ruby youtubedownloader.rb -m search -q "borro cassette" -a 1`
+* `ruby youtubedownloader.rb -m list -q RDt6omUxqhG78 -i 1 3 2 8`
 
 ## Bugs
 * Sometimes the file does not download correctly. I added 3 download retries, sometimes that works.
