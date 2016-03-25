@@ -71,14 +71,15 @@ module Messages
 	STR_FAIL_DOWNLOAD = "Failed to download."
 	STR_NIL_MODE      = "Flag --mode is required. See --help for help"
 	STR_WRONG_MODE    = "That mode isn't supported. See --help for help."
-	STR_NIL_QRY       = "You need to tell me what to download. See --help for help."
-	STR_WRONG_NUM_RESULTS = "Can't download that number of results. See --help for help."
+	STR_NIL_QRY       = "Flag --query is required. See --help for help."
+	STR_WRONG_NUM     = "Input a number inside the correct range. See --help for help."
 	STR_EMPTY 		  = "Couldn't find any items."
 	STR_REQUEST_ERROR = "Request error. Retrying: "
 	STR_FAILED_SONGS  = "Error while downloading: "
 	STR_RETRY_DOWNLOAD = "Retry download? (y/n)"
 	STR_YOU_CAN_DO_IT = "Please type \"y\" or \"n\"."
 	STR_FAIL_MOVE     = "There was an error moving the file. "
+	STR_FAIL_CREATE   = "Can't create output directory. "
 end
 
 module Everything    
@@ -118,7 +119,7 @@ class API
 		end
 	end
 
-	def request(method, params)
+	def request(method, params, skip)
 
 		items = []
 		total = nil
@@ -128,16 +129,23 @@ class API
 			begin
 
 				params[:maxResults] = max_results > 50 ? 50 : max_results
+
 				search_response = @client.execute!(
 			    	:api_method => method,
 			    	:parameters => params
 			    )
 
-				items += search_response.data.items
-
 				total ||= search_response.data.pageInfo.totalResults
-			    max_results -= search_response.data.pageInfo.resultsPerPage
-			    total -= search_response.data.pageInfo.resultsPerPage
+
+				search_response.data.items.each do |item| 
+					if skip == 0
+						items << item
+						max_results -= 1
+					else
+						skip -= 1
+						total -= 1
+					end
+				end
 
 			    unless search_response.data.next_page_token.nil?
 			    	params[:pageToken] = search_response.data.next_page_token
@@ -153,29 +161,29 @@ class API
 	    return items
 	end
 
-	def search_playListItems_by_id(id, max_results)
+	def search_playListItems_by_id(id, max_results, skip)
 
 	    params = {
 	    	:part => "snippet",
 		    :playlistId => id,
 		    :maxResults => max_results
 		}
-	    response = request(@youtube.playlist_items.list, params)
+	    response = request(@youtube.playlist_items.list, params, skip)
 	    return response
 	end
 
-	def search_video_by_id(id, max_results)
+	def search_video_by_id(id, max_results, skip)
 
 	    params = {
 	    	:part => "snippet",
         	:id => id,
         	:maxResults => max_results
 	    }
-	    response = request(@youtube.videos.list, params)
+	    response = request(@youtube.videos.list, params, skip)
 	    return response
 	end
 
-	def search_query(q, max_results)
+	def search_query(q, max_results, skip)
 
 	    params = {
 	    	:part => "snippet",
@@ -183,7 +191,7 @@ class API
         	:type => "video",
         	:maxResults => max_results
 	    }
-	    response = request(@youtube.search.list, params)
+	    response = request(@youtube.search.list, params, skip)
 	    return response
 	end
 end
@@ -199,12 +207,13 @@ class App
 		@modes = Set.new [:list, :video, :search]
 		@mutex = Mutex.new
         @opts = Trollop::options do
-	    	opt :mode, "Type of the download (list, video, search)", :type => String, :default => nil
-	    	opt :query, "What to download. For list and video should be the id, for search should be a query", :type => String, :default => nil
-	    	opt :out, "Where the downloads will store", :type => String, :default => "~/Music"
-	    	opt :key, "Path to the file with the API key", :type => String, :default => "~/.config/youtubedownloader/apikey"
-	    	opt :quiet, "To silence the output"
-	    	opt :max_results, "Max items to download >= 1", :type => :int, :default => 25
+	    	opt :mode, "Type of the download (list, video, search).", :type => String, :default => nil
+	    	opt :query, "What to download. For list and video should be the id, for search should be a query.", :type => String, :default => nil
+	    	opt :out, "Where the downloads will store.", :type => String, :default => "~/Music"
+	    	opt :key, "Path to the file with the API key.", :type => String, :default => "~/.config/youtubedownloader/apikey"
+	    	opt :quiet, "To silence the output."
+	    	opt :max_results, "Max items to download. >= 1", :type => :int, :default => 25
+	    	opt :skip, "Skip the first <i> items of the query. >= 0", :type => :int, :default => 0
 		end
 
 		check_options
@@ -227,11 +236,21 @@ class App
     	end
 
     	if @opts[:max_results] < 1
-    		print_error(STR_WRONG_NUM_RESULTS)
+    		print_error(STR_WRONG_NUM)
     		exit 1
     	end 
 
-    	Dir.mkdir(File.expand_path(@opts[:out])) unless File.exists?(File.expand_path(@opts[:out]))
+    	if @opts[:skip] < 0
+    		print_error(STR_WRONG_NUM)
+    		exit 1
+    	end 
+
+    	begin
+    		Dir.mkdir(File.expand_path(@opts[:out])) unless File.exists?(File.expand_path(@opts[:out]))
+    	rescue Exception => error
+    		print_error(STR_FAIL_CREATE, error)
+    		exit 1
+    	end
     end
 
     def youtube_in_mp3(title, id)
@@ -269,7 +288,7 @@ class App
 
 		case @opts[:mode].to_sym
 		when :list
-			videos = api.search_playListItems_by_id(@opts[:query], @opts[:max_results])
+			videos = api.search_playListItems_by_id(@opts[:query], @opts[:max_results], @opts[:skip])
 
 			if videos.length == 0
 				info(STR_EMPTY)
@@ -283,7 +302,7 @@ class App
 				{title:title, id:id} if result != "Success"
 			end
 		when :video # Multiple ids should be comma separeted
-			videos = api.search_video_by_id(@opts[:query], @opts[:max_results])
+			videos = api.search_video_by_id(@opts[:query], @opts[:max_results], @opts[:skip])
 
 			if videos.length == 0
 				info(STR_EMPTY)
@@ -297,7 +316,7 @@ class App
 				{title:title, id:id} if result != "Success"
 			end
 		when :search
-			videos = api.search_query(@opts[:query], @opts[:max_results])
+			videos = api.search_query(@opts[:query], @opts[:max_results], @opts[:skip])
 
 			if videos.length == 0
 				info(STR_EMPTY)

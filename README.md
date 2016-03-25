@@ -9,14 +9,13 @@ Once you get your API key you need to save it inside the file `~/.config/youtube
 ## Usage
 ```
   Options:
-      -m, --mode=<s>           Type of the download (list, video, search)
-      -q, --query=<s>          What to download. For list and video should be the
-                               id, for search should be a query
-      -o, --out=<s>            Where the downloads will store (default: ~/Music)
-      -k, --key=<s>            Path to the file with the API key (default:
-                               ~/.config/youtubedownloader/apikey)
-      -u, --quiet              To silence the output
-      -a, --max-results=<i>    Max items to download >= 1 (default: 25)
+      -m, --mode=<s>           Type of the download (list, video, search).
+      -q, --query=<s>          What to download. For list and video should be the id, for search should be a query.
+      -o, --out=<s>            Where the downloads will store. (Default: ~/Music)
+      -k, --key=<s>            Path to the file with the API key. (Default: ~/.config/youtubedownloader/apikey)
+      -u, --quiet              To silence the output.
+      -a, --max-results=<i>    Max items to download. >= 1 (default: 25)
+      -s, --skip=<i>           Skip the first <i> items of the query. >= 0 (default: 0)
       -h, --help               Show this message
 ```
 The options `-m, --mode=<s>` and `-q, --query=<s>` are required. 
